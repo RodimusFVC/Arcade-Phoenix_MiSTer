@@ -12,6 +12,7 @@
 -- T80(b) core. In an effort to merge and maintain bug fixes ....
 --
 -- Phoenix core 2026-10-23: I8085 / RIM_D ports, 8085 RIM (opcode 20) in 8080 mode (Survival reads SID)
+-- Phoenix core 2026-10-23: SOD port, 8085 SIM (opcode 30) in 8080 mode (Pleiads drives sound from SOD)
 -- Ver 303 add undocumented DDCB and FDCB opcodes by TobiFlex 20.04.2010
 -- Ver 301 parity flag is just parity for 8080, also overflow for Z80, by Sean Riddle
 -- Ver 300 started tidyup.
@@ -100,6 +101,7 @@ entity T80 is
 		I8080  : in  std_logic := '0';  -- runtime 8080 mode (on a Mode_g = 0 build: Mode = 2 while high)
 		I8085  : in  std_logic := '0';  -- in 8080 mode: opcode 20 = 8085 RIM (A <= RIM_D) instead of NOP
 		RIM_D  : in  std_logic_vector(7 downto 0) := (others => '0');  -- RIM value: [7] SID, [6:0] interrupt state
+		SOD    : out std_logic;  -- 8085 SIM (opcode 30, I8085 in 8080 mode): A[6] = SOE latches A[7] here; 0 at reset
 		RESET_n    : in  std_logic;
 		CLK_n      : in  std_logic;
 		CEN        : in  std_logic;
@@ -138,6 +140,7 @@ architecture rtl of T80 is
 
 	-- Registers
 	signal ACC, F               : std_logic_vector(7 downto 0);
+	signal SOD_r                : std_logic;
 	signal Ap, Fp               : std_logic_vector(7 downto 0);
 	signal I                    : std_logic_vector(7 downto 0);
 	signal R                    : unsigned(7 downto 0);
@@ -408,6 +411,7 @@ begin
 			IStatus <= "00";
 			MCycles <= "000";
 			DO <= "00000000";
+			SOD_r <= '0';
 
 			ACC <= (others => '1');
 			F <= (others => '1');
@@ -904,6 +908,11 @@ begin
 				if I8085 = '1' and Mode = 2 and MCycle = "001" and TState = 4 and ISet = "00" and IR = x"20" then
 					ACC <= RIM_D;
 				end if;
+				-- 8085 SIM: opcode 30 (a NOP in 8080 mode); serial output enable A[6] latches A[7] into SOD.
+				-- The interrupt-mask half of SIM is not modelled (the Phoenix boards use no 8085 interrupts).
+				if I8085 = '1' and Mode = 2 and MCycle = "001" and TState = 4 and ISet = "00" and IR = x"30" and ACC(6) = '1' then
+					SOD_r <= ACC(7);
+				end if;
 			end if;
 		end if;
 	end process;
@@ -1217,6 +1226,7 @@ begin
 	BUSAK_n <= not (BusAck and RESET_n);
 	IntCycle_n <= not IntCycle;
 	IntE <= IntE_FF1;
+	SOD <= SOD_r;
 	IORQ <= IORQ_i;
 	Stop <= I_DJNZ;
 -------------------------------------------------------------------------

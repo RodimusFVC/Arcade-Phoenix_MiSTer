@@ -17,7 +17,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import dsnd_phoenix                                    # noqa: E402  discrete sound engine program (MRA index 5)
+import dsnd_phoenix                                    # noqa: E402  discrete sound engine programs (MRA index 5)
+import dsnd_pleiads                                    # noqa: E402
 
 MAME_VERSION = "0289"
 RBF = "Phoenix"
@@ -63,7 +64,7 @@ def board_options(g, ports):
 
 
 # MAME machine -> discrete sound engine program (MRA index 5); machines without one get no index 5 (silent engine)
-SOUND_PROGRAMS = {"phoenix": dsnd_phoenix.phoenix, "condor": dsnd_phoenix.phoenix}
+SOUND_PROGRAMS = {"phoenix": dsnd_phoenix.phoenix, "condor": dsnd_phoenix.phoenix, "pleiads": dsnd_pleiads.pleiads}
 _SOUND_CACHE = {}
 
 

@@ -35,7 +35,7 @@
         <dip name="Cabinet" bits="8" ids="Upright,Cocktail"/>
     </switches>
 
-    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <!-- Index 0: MAME regions, layout in rtl/phoenix_board.sv -->
     <rom index="0" md5="none" zip="germwars.zip">
         <part crc="aba21b11" name="001b-1.1a"/>
         <part crc="e377b8d9" name="001b-2.2a"/>

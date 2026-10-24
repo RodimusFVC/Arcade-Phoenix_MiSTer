@@ -36,7 +36,7 @@
         <dip name="Cabinet" bits="16" ids="Upright,Cocktail"/>
     </switches>
 
-    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <!-- Index 0: MAME regions, layout in rtl/phoenix_board.sv -->
     <rom index="0" md5="none" zip="griffon.zip|phoenix.zip">
         <part crc="c0f73929" name="griffon0.a5"/>
         <part crc="3cc33e4a" name="griffon1.a6"/>

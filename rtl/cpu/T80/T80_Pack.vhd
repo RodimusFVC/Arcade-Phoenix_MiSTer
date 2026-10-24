@@ -85,6 +85,7 @@ package T80_Pack is
 		I8080  : in  std_logic := '0';  -- runtime 8080 mode (on a Mode_g = 0 build: Mode = 2 while high)
 		I8085  : in  std_logic := '0';  -- in 8080 mode: opcode 20 = 8085 RIM (A <= RIM_D) instead of NOP
 		RIM_D  : in  std_logic_vector(7 downto 0) := (others => '0');  -- RIM value: [7] SID, [6:0] interrupt state
+		SOD    : out std_logic;  -- 8085 SIM output (see T80.vhd)
 		RESET_n         : in std_logic;
 		CLK_n           : in std_logic;
 		CEN             : in std_logic;

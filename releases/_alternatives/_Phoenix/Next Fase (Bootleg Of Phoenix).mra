@@ -35,7 +35,7 @@
         <dip name="Cabinet" bits="8" ids="Upright,Cocktail"/>
     </switches>
 
-    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <!-- Index 0: MAME regions, layout in rtl/phoenix_board.sv -->
     <rom index="0" md5="none" zip="nextfase.zip|phoenix.zip">
         <part crc="b31ce820" name="nf01.bin"/>
         <part crc="891d21e1" name="nf02.bin"/>

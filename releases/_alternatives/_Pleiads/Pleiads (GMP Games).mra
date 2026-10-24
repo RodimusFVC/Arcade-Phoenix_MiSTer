@@ -36,7 +36,7 @@
         <dip name="Cabinet" bits="8" ids="Upright,Cocktail"/>
     </switches>
 
-    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <!-- Index 0: MAME regions, layout in rtl/phoenix_board.sv -->
     <rom index="0" md5="none" zip="pleiadsgmp.zip|pleiads.zip">
         <part crc="6a6dcabf" name="ic45"/>
         <part crc="c82557b4" name="0.ic46"/>

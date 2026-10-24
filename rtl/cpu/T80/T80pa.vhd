@@ -87,6 +87,7 @@ entity T80pa is
         I8080       : in  std_logic := '0';  -- runtime 8080 mode (Mode = 0 build)
         I8085       : in  std_logic := '0';  -- in 8080 mode: opcode 20 = 8085 RIM (see T80.vhd)
         RIM_D       : in  std_logic_vector(7 downto 0) := (others => '0');  -- RIM value: [7] SID
+        SOD         : out std_logic;                     -- 8085 SIM output (see T80.vhd)
         REG         : out std_logic_vector(211 downto 0); -- IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
         DIRSet      : in  std_logic := '0';
         DIR         : in  std_logic_vector(211 downto 0) := (others => '0') -- IFF2, IFF1, IM, IY, HL', DE', BC', IX, HL, DE, BC, PC, SP, R, I, F', A', F, A
@@ -120,6 +121,7 @@ begin
             I8080   => I8080,
             I8085   => I8085,
             RIM_D   => RIM_D,
+            SOD     => SOD,
             CEN     => CEN,
             M1_n    => M1_n,
             IORQ    => IORQ,

@@ -35,7 +35,7 @@
         <dip name="Cabinet" bits="8" ids="Upright,Cocktail"/>
     </switches>
 
-    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <!-- Index 0: MAME regions, layout in rtl/phoenix_board.sv -->
     <rom index="0" md5="none" zip="survival.zip|germwars.zip">
         <part crc="0bc53541" name="g959-32a_45.u45"/>
         <part crc="726e9428" name="g959-33a_46.u46"/>

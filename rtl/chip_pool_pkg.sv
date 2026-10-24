@@ -200,6 +200,7 @@ typedef struct packed {
     logic        rd_n;
     logic        wr_n;
     logic        rfsh_n;
+    logic        sod;                   // 8085 SID / SOD: SOD latched by SIM (opcode 30)
 } z80pa85_o_t;
 
 // TMS36XX family (rtl/sound/tms36xx.sv: MM6221AA tunes, TMS3615 / TMS3617 notes); parameters per instance

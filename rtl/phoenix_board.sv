@@ -111,7 +111,7 @@ assign dsnd_0_i    = phx_dsnd_0_i;
 // z80pa85_0: phx main CPU (8085 = 8080 mode + RIM, paced by the board; Z80 for the condor-machine bootlegs)
 wire [15:0] z80pa85_0_a;
 wire  [7:0] z80pa85_0_do;
-wire        z80pa85_0_m1_n, z80pa85_0_mreq_n, z80pa85_0_iorq_n, z80pa85_0_rd_n, z80pa85_0_wr_n, z80pa85_0_rfsh_n;
+wire        z80pa85_0_m1_n, z80pa85_0_mreq_n, z80pa85_0_iorq_n, z80pa85_0_rd_n, z80pa85_0_wr_n, z80pa85_0_rfsh_n, z80pa85_0_sod;
 T80pa #(.Mode(0)) z80pa85_0
 (
     .RESET_n(~reset), .CLK(clk), .CEN_p(z80pa85_0_i.cen_p), .CEN_n(z80pa85_0_i.cen_n),
@@ -119,13 +119,14 @@ T80pa #(.Mode(0)) z80pa85_0
     .M1_n(z80pa85_0_m1_n), .MREQ_n(z80pa85_0_mreq_n), .IORQ_n(z80pa85_0_iorq_n), .RD_n(z80pa85_0_rd_n),
     .WR_n(z80pa85_0_wr_n), .RFSH_n(z80pa85_0_rfsh_n), .HALT_n(), .BUSAK_n(),
     .OUT0(1'b0), .A(z80pa85_0_a), .DI(z80pa85_0_i.di), .DO(z80pa85_0_do), .R800_mode(1'b0),
-    .I8080(z80pa85_0_i.i8080), .I8085(z80pa85_0_i.i8085), .RIM_D(z80pa85_0_i.rim_d),
+    .I8080(z80pa85_0_i.i8080), .I8085(z80pa85_0_i.i8085), .RIM_D(z80pa85_0_i.rim_d), .SOD(z80pa85_0_sod),
     .REG(), .DIRSet(1'b0), .DIR(212'd0)
 );
 assign z80pa85_0_o.a      = z80pa85_0_a;      assign z80pa85_0_o.dout   = z80pa85_0_do;
 assign z80pa85_0_o.m1_n   = z80pa85_0_m1_n;   assign z80pa85_0_o.mreq_n = z80pa85_0_mreq_n;
 assign z80pa85_0_o.iorq_n = z80pa85_0_iorq_n; assign z80pa85_0_o.rd_n   = z80pa85_0_rd_n;
 assign z80pa85_0_o.wr_n   = z80pa85_0_wr_n;   assign z80pa85_0_o.rfsh_n = z80pa85_0_rfsh_n;
+assign z80pa85_0_o.sod    = z80pa85_0_sod;
 
 // ay_0: phx Survival AY-3-8910 (jt49_bus, sel = 1)
 wire [7:0] ay_0_dout, ay_0_a, ay_0_b, ay_0_c, ay_0_iob;

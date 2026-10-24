@@ -675,7 +675,8 @@ assign video_vs     = vs_d[DLY-1];
 // ---------------------------------------------------------------- sound
 // Effects 1 / 2 and the noise: discrete engine program (MRA index 5). Sources: 0 = control A, 1 = control B.
 wire signed [15:0] ds_out;
-assign dsnd_0_i.src = {48'd0, snd_b, snd_a};       // the shared engine (dsnd_0); program = MRA index 5
+assign dsnd_0_i.src = {40'd0, 7'd0, z80pa85_0_o.sod, snd_b, snd_a};   // the shared engine (dsnd_0); program = MRA index 5
+                                                    // (Pleiads: byte 2 bit 0 = 8085 SOD, set by SIM)
 assign ds_out = dsnd_0_o.out;
 
 // MM6221AA <49>: tune select = control B bits 7-6 on every write (MAME phoenix_sound_device::control_b_w),
@@ -700,8 +701,10 @@ wire signed [11:0] ay_x  = $signed({2'b00, ay_snd}) - $signed(ay_dc[26:15]);
 always @(posedge clk) if (reset) ay_dc <= 27'sd0; else if (div == 4'd15) ay_dc <= ay_dc + 27'(ay_x);
 wire signed [16:0] ay_out = 17'(ay_x) <<< 6;
 
-// MAME mix: discrete 0.6 + custom noise 0.4 (both inside the engine program) + MM6221AA 0.5; Survival: the AY
-wire signed [16:0] mix = v_surv ? ay_out : 17'(ds_out) + 17'(mm_out >>> 1);
+// Phoenix: MAME mix, discrete 0.6 + custom noise 0.4 (both inside the engine program) + MM6221AA 0.5.
+// Pleiads: the engine = the board's effects mixer (tools/dsnd_pleiads.py) + the 7910 stand-in at ~its R84 leg level.
+// Survival: the AY.
+wire signed [16:0] mix = v_surv ? ay_out : 17'(ds_out) + (v_pleiads ? 17'(mm_out >>> 2) : 17'(mm_out >>> 1));
 assign audio = (mix > 17'sd32767) ? 16'sh7FFF : (mix < -17'sd32768) ? 16'sh8000 : mix[15:0];
 
 // ---------------------------------------------------------------- hiscore (final pass)
