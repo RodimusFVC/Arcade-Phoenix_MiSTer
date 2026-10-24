@@ -1,0 +1,68 @@
+<misterromdescription>
+    <name>Survival</name>
+    <region>World</region>
+    <homebrew>no</homebrew>
+    <bootleg>no</bootleg>
+    <version></version>
+    <alternative></alternative>
+    <platform></platform>
+    <series>Survival</series>
+    <year>1982</year>
+    <manufacturer>Microtrain (Rock-Ola license)</manufacturer>
+    <category>Shooter</category>
+
+    <setname>survival</setname>
+    <parent>germwars</parent>
+    <mameversion>0289</mameversion>
+    <rbf>Phoenix</rbf>
+    <about></about>
+
+    <resolution>15kHz</resolution>
+    <rotation>vertical (cw)</rotation>
+    <flip>yes</flip>
+
+    <players>2 (alternating)</players>
+    <joystick>8-way</joystick>
+    <special_controls></special_controls>
+    <num_buttons>1</num_buttons>
+    <buttons names="Fire,Not Used,Not Used,Not Used,Coin,Start 1P,Start 2P,Pause,Not Used,Not Used,Not Used" default="A,B,X,Y,Select,Start,R,L"/>
+
+    <switches default="FE,FE">
+        <dip name="Lives" bits="0,1" ids="2,3,4,5" values="3,2,1,0"/>
+        <dip name="Bonus Life" bits="2,3" ids="25000,35000,45000,55000" values="3,2,1,0"/>
+        <dip name="Free Play" bits="4" ids="Off,On" values="1,0"/>
+        <dip name="Coinage" bits="5,6" ids="5C/1C,3C/1C,2C/1C,1C/1C"/>
+        <dip name="Cabinet" bits="8" ids="Upright,Cocktail"/>
+    </switches>
+
+    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <rom index="0" md5="none" zip="survival.zip|germwars.zip">
+        <part crc="0bc53541" name="g959-32a_45.u45"/>
+        <part crc="726e9428" name="g959-33a_46.u46"/>
+        <part crc="78f166ff" name="g959-34a_47.u47"/>
+        <part crc="59dbe099" name="g959-35a_48.u48"/>
+        <part crc="bd5e586e" name="g959-36a_49.u49"/>
+        <part crc="b2de1094" name="g959-37a_50.u50"/>
+        <part crc="131c4440" name="g959-38a_51.u51"/>
+        <part crc="213bc910" name="g959-39a_52.u52"/>
+        <part crc="3d1ce38d" name="g959-42-23.u23"/>
+        <part crc="cd150da9" name="g959-43-24.u24"/>
+        <part crc="41dee996" name="g959-40-39.u39"/>
+        <part crc="a255d6dc" name="g959-41-40.u40"/>
+        <part crc="b3e20669" name="n82s129n.u40"/>
+        <part crc="abddf69a" name="n82s129n.u41"/>
+    </rom>
+
+    <!-- Index 1: board variant, flags, board options, input map (see Arcade-Phoenix.sv) -->
+    <rom index="1">
+        <part>
+            02 90 00 00 FF FF FE FF FE FF 80 80 00 80 01 80
+            11 13 14 05 01 04 03 02 00 00 00 0D 09 0C 0B 0A
+            00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+            00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+        </part>
+    </rom>
+
+    <remark>Survival (Microtrain (Rock-Ola License))</remark>
+    <mratimestamp>20261023000000</mratimestamp>
+</misterromdescription>

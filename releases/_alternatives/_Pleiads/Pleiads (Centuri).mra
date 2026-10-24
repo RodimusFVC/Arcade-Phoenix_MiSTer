@@ -1,0 +1,69 @@
+<misterromdescription>
+    <name>Pleiads (Centuri)</name>
+    <region>World</region>
+    <homebrew>no</homebrew>
+    <bootleg>no</bootleg>
+    <version></version>
+    <alternative></alternative>
+    <platform></platform>
+    <series>Pleiads</series>
+    <year>1981</year>
+    <manufacturer>Tehkan (Centuri license)</manufacturer>
+    <category>Shooter</category>
+
+    <setname>pleiadce</setname>
+    <parent>pleiads</parent>
+    <mameversion>0289</mameversion>
+    <rbf>Phoenix</rbf>
+    <about></about>
+
+    <resolution>15kHz</resolution>
+    <rotation>vertical (cw)</rotation>
+    <flip>yes</flip>
+
+    <players>2 (alternating)</players>
+    <joystick>2-way</joystick>
+    <special_controls></special_controls>
+    <num_buttons>2</num_buttons>
+    <buttons names="Fire,Button 2,Not Used,Not Used,Coin,Start 1P,Start 2P,Pause,Not Used,Not Used,Not Used" default="A,B,X,Y,Select,Start,R,L"/>
+
+    <switches default="E0,FE">
+        <dip name="Lives" bits="0,1" ids="3,4,5,6"/>
+        <dip name="Coinage" bits="4" ids="2C/1C,1C/1C" values="1,0"/>
+        <dip name="Unknown" bits="5" ids="Off,On" values="1,0"/>
+        <dip name="Demo Sounds" bits="6" ids="Off,On"/>
+        <dip name="Bonus Life" bits="2,3" ids="7K 70K,8K 80K,9K 90K" values="0,1,2"/>
+        <dip name="Cabinet" bits="8" ids="Upright,Cocktail"/>
+    </switches>
+
+    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <rom index="0" md5="none" zip="pleiadce.zip|pleiads.zip">
+        <part crc="711e2ba0" name="pleiades.47"/>
+        <part crc="93a36943" name="pleiades.48"/>
+        <part crc="87e700bb" name="ic47.bin"/>
+        <part crc="5a9beba0" name="pleiades.50"/>
+        <part crc="1d828719" name="pleiades.51"/>
+        <part crc="f1a8a00d" name="ic50.bin"/>
+        <part crc="037b319c" name="pleiades.53"/>
+        <part crc="ca264c7c" name="pleiades.54"/>
+        <part crc="8dbd3785" name="pleiades.45"/>
+        <part crc="0db3e436" name="pleiades.44"/>
+        <part crc="85866607" name="ic39.bin"/>
+        <part crc="a841d511" name="ic40.bin"/>
+        <part crc="7a1bcb1e" name="7611-5.26"/>
+        <part crc="e38eeb83" name="7611-5.33"/>
+    </rom>
+
+    <!-- Index 1: board variant, flags, board options, input map (see Arcade-Phoenix.sv) -->
+    <rom index="1">
+        <part>
+            01 90 08 00 0F FF E0 FF FE FF 80 80 00 80 01 80
+            11 13 14 00 00 00 00 00 05 04 03 06 0D 0C 0B 0E
+            00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+            00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+        </part>
+    </rom>
+
+    <remark>Pleiads (Centuri) (Tehkan (Centuri License))</remark>
+    <mratimestamp>20261023000000</mratimestamp>
+</misterromdescription>

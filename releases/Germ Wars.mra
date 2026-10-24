@@ -1,0 +1,68 @@
+<misterromdescription>
+    <name>Germ Wars</name>
+    <region>World</region>
+    <homebrew>no</homebrew>
+    <bootleg>no</bootleg>
+    <version></version>
+    <alternative></alternative>
+    <platform></platform>
+    <series>Survival</series>
+    <year>1982</year>
+    <manufacturer>Microtrain (Seevend Automaten license)</manufacturer>
+    <category>Shooter</category>
+
+    <setname>germwars</setname>
+    <parent>germwars</parent>
+    <mameversion>0289</mameversion>
+    <rbf>Phoenix</rbf>
+    <about></about>
+
+    <resolution>15kHz</resolution>
+    <rotation>vertical (cw)</rotation>
+    <flip>yes</flip>
+
+    <players>2 (alternating)</players>
+    <joystick>8-way</joystick>
+    <special_controls></special_controls>
+    <num_buttons>1</num_buttons>
+    <buttons names="Fire,Not Used,Not Used,Not Used,Coin,Start 1P,Start 2P,Pause,Not Used,Not Used,Not Used" default="A,B,X,Y,Select,Start,R,L"/>
+
+    <switches default="FE,FE">
+        <dip name="Lives" bits="0,1" ids="2,3,4,5" values="3,2,1,0"/>
+        <dip name="Bonus Life" bits="2,3" ids="25000,35000,45000,55000" values="3,2,1,0"/>
+        <dip name="Free Play" bits="4" ids="Off,On" values="1,0"/>
+        <dip name="Coinage" bits="5,6" ids="5C/1C,3C/1C,2C/1C,1C/1C"/>
+        <dip name="Cabinet" bits="8" ids="Upright,Cocktail"/>
+    </switches>
+
+    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <rom index="0" md5="none" zip="germwars.zip">
+        <part crc="aba21b11" name="001b-1.1a"/>
+        <part crc="e377b8d9" name="001b-2.2a"/>
+        <part crc="22ca6d19" name="001b-3.3a"/>
+        <part crc="de50ca63" name="001b-4.4a"/>
+        <part crc="fdf29f03" name="001b-5.5a"/>
+        <part crc="8192b32a" name="001b-6.6a"/>
+        <part crc="971b0686" name="001b-7.7a"/>
+        <part crc="416c4ab2" name="001b-8.8a"/>
+        <part crc="3d1ce38d" name="001b-11.3d"/>
+        <part crc="cd150da9" name="001b-12.4d"/>
+        <part crc="41dee996" name="001b-09.3b"/>
+        <part crc="a255d6dc" name="001b-10.4b"/>
+        <part crc="b3e20669" name="n82s129n.u40"/>
+        <part crc="abddf69a" name="n82s129n.u41"/>
+    </rom>
+
+    <!-- Index 1: board variant, flags, board options, input map (see Arcade-Phoenix.sv) -->
+    <rom index="1">
+        <part>
+            02 90 00 00 FF FF FE FF FE FF 80 80 00 80 01 80
+            11 13 14 05 01 04 03 02 00 00 00 0D 09 0C 0B 0A
+            00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+            00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+        </part>
+    </rom>
+
+    <remark>Germ Wars (Germany) (Microtrain (Seevend Automaten License))</remark>
+    <mratimestamp>20261023000000</mratimestamp>
+</misterromdescription>

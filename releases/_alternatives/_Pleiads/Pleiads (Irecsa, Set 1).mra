@@ -1,0 +1,69 @@
+<misterromdescription>
+    <name>Pleiads (Irecsa, Set 1)</name>
+    <region>World</region>
+    <homebrew>no</homebrew>
+    <bootleg>no</bootleg>
+    <version></version>
+    <alternative></alternative>
+    <platform></platform>
+    <series>Pleiads</series>
+    <year>1981</year>
+    <manufacturer>Tehkan (Irecsa license)</manufacturer>
+    <category>Shooter</category>
+
+    <setname>pleiadsi</setname>
+    <parent>pleiads</parent>
+    <mameversion>0289</mameversion>
+    <rbf>Phoenix</rbf>
+    <about></about>
+
+    <resolution>15kHz</resolution>
+    <rotation>vertical (cw)</rotation>
+    <flip>yes</flip>
+
+    <players>2 (alternating)</players>
+    <joystick>2-way</joystick>
+    <special_controls></special_controls>
+    <num_buttons>2</num_buttons>
+    <buttons names="Fire,Button 2,Not Used,Not Used,Coin,Start 1P,Start 2P,Pause,Not Used,Not Used,Not Used" default="A,B,X,Y,Select,Start,R,L"/>
+
+    <switches default="E0,FE">
+        <dip name="Lives" bits="0,1" ids="3,4,5,6"/>
+        <dip name="Coinage" bits="4" ids="2C/1C,1C/1C" values="1,0"/>
+        <dip name="Unknown" bits="5" ids="Off,On" values="1,0"/>
+        <dip name="Demo Sounds" bits="6" ids="Off,On"/>
+        <dip name="Bonus Life" bits="2,3" ids="7K 70K,8K 80K,9K 90K" values="0,1,2"/>
+        <dip name="Cabinet" bits="8" ids="Upright,Cocktail"/>
+    </switches>
+
+    <!-- Index 0: MAME regions, layout in rtl/boards/phoenix/phoenix_board.sv -->
+    <rom index="0" md5="none" zip="pleiadsi.zip|pleiads.zip">
+        <part crc="9bbef607" name="1 2716.bin"/>
+        <part crc="e2b5b8cd" name="2 2716.bin"/>
+        <part crc="87e700bb" name="3 2716.bin"/>
+        <part crc="ca14fe4a" name="4 2716.bin"/>
+        <part crc="9dc73e63" name="5 2716.bin"/>
+        <part crc="f1a8a00d" name="6 2716.bin"/>
+        <part crc="6f56f317" name="7 2716.bin"/>
+        <part crc="ca264c7c" name="8 2716.bin"/>
+        <part crc="8dbd3785" name="11 2716.bin"/>
+        <part crc="0db3e436" name="12 2716.bin"/>
+        <part crc="85866607" name="9 2716.bin"/>
+        <part crc="a841d511" name="10 2716.bin"/>
+        <part crc="7a1bcb1e" name="7611-5.26"/>
+        <part crc="e38eeb83" name="7611-5.33"/>
+    </rom>
+
+    <!-- Index 1: board variant, flags, board options, input map (see Arcade-Phoenix.sv) -->
+    <rom index="1">
+        <part>
+            01 90 08 00 0F FF E0 FF FE FF 80 80 00 80 01 80
+            11 13 14 00 00 00 00 00 05 04 03 06 0D 0C 0B 0E
+            00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+            00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+        </part>
+    </rom>
+
+    <remark>Pleiads (Irecsa, Set 1) (Tehkan (Irecsa License))</remark>
+    <mratimestamp>20261023000000</mratimestamp>
+</misterromdescription>
