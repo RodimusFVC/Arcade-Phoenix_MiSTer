@@ -1,7 +1,11 @@
 //============================================================================
 //
 //  Discrete sound engine: one small fixed-point processor that runs a per-game circuit program (MRA index 5,
-//  tools/dsnd.py) once per 48 kHz sample, so each Midway one-off sound board costs a program, not logic.
+//  tools/dsnd.py) once per sample, so each discrete sound board costs a program, not logic.
+//  Ported from Arcade-SpaceInvaders_MiSTer rtl/dsnd_engine.sv. Exidy changes: 22.578 MHz clock (832 clocks per
+//  sample = 27.137 kHz), op 33 OUTR (right channel mix), out_r, sample strobe for box-averaged sources.
+//  MASTER (merged Exidy + Phoenix copies): TICK = clocks per sample (default 832 = Exidy 22.578 MHz / Space Invaders
+//  39.936 MHz; Phoenix instances with #(.TICK(917)) at 44 MHz). out_r / sample are optional (leave unconnected for mono).
 //  Copyright (C) 2026 Rodimus
 //
 //  Redistribution and use in source and synthesized forms, with or without
@@ -34,23 +38,25 @@
 //  20 OUT: mix += acc   21 LDF a: if F acc = M[a]   22 SKF: if F skip imm   23 SKNF: if !F skip imm
 //  24 LDL b: acc = source byte << 16   25 ABS   26 FAND b: F &= bit   27 FOR b: F |= bit   28 STNF a: if !F
 //  29 LDLM b: acc = (source byte & imm[7:0]) << imm[12:8]   30 MACI a: acc += M[a] * imm >> 24
+//  33 OUTR: mix_r += acc (out_r = mix_r if any OUTR ran in the sample, else out)
 //  31 EXP: acc = 2^acc (degree-5 polynomial in Q28 on the fraction, then a shift; >= 7.0 -> 7FFFFFFF, < -24.0 -> 0)
 //  32 RCP: acc = 1 / acc (normalise, linear seed, 3 Newton-Raphson steps in Q24; 0 -> 7FFFFFFF, saturated)
 // Budget units: 1 per instruction, EXP 4 (8 clocks), RCP 5 (10 clocks); a sample stops after the instruction that
 // reaches 410 units.
-// Sources (b[5:3]): 0-3 sound latches 1-4, 4 latch 0, 5 misc, 6 / 7 Game Audio settings; b[2:0] = bit.
+// Sources (b[5:3]): 0-5 board sources (see tools/dsnd_boards.py), 6 / 7 Game Audio settings; b[2:0] = bit.
 
-// Sample period TICK clocks (Space Invaders 832 at 39.936 MHz; Phoenix 917 at 44 MHz).
 module dsnd_engine #(parameter int TICK = 832)
 (
-    input  logic        clk,            // TICK x sample rate
+    input  logic        clk,            // TICK x sample rate (Exidy 22.578 MHz / 832; Phoenix 44 MHz / 917)
     input  logic        reset,
     input  logic        pause,
     input  logic        prog_wr,        // MRA index 5 byte
     input  logic [12:0] prog_addr,
     input  logic  [7:0] prog_data,
     input  logic [63:0] src,            // sources 7..0, one byte each
-    output logic signed [15:0] out
+    output logic signed [15:0] out,
+    output logic signed [15:0] out_r,
+    output logic        sample          // one clk at the start of each sample period (sources are read after it)
 );
 
 // Two clocks per instruction: E1 reads M[a] / M[b] (addressed from the program word in the previous E2), registers
@@ -99,9 +105,11 @@ dpram_dc #(.widthad_a(8), .width_a(32)) u_mb
 logic [9:0] tick = 10'd0;
 wire        go = tick == 10'(TICK - 1);
 always_ff @(posedge clk) if (reset) tick <= 10'd0; else if (!pause) tick <= go ? 10'd0 : tick + 10'd1;
+assign sample = go & ~pause;
 
 logic [63:0] ir = 64'd0;
-logic signed [31:0] acc = 32'sd0, mix = 32'sd0;
+logic signed [31:0] acc = 32'sd0, mix = 32'sd0, mix_r = 32'sd0;
+logic        used_r = 1'b0;
 logic        f = 1'b0;
 logic [30:0] lfsr[4] = '{31'd1, 31'd1, 31'd1, 31'd1};
 logic  [8:0] icnt = 9'd0;
@@ -145,6 +153,10 @@ wire [31:0] rcp_mn = rcp_m0 << rcp_z;
 wire signed [63:0] xshl = 64'(xp) <<< xsh;       // final shifts
 wire signed [32:0] xshr = xp >>> (-xsh);
 wire signed [31:0] xl32 = 32'(xshl), xr32 = 32'(xshr);   // (Quartus 17: no unary minus on a size cast)
+
+function automatic logic signed [15:0] sat16(input logic signed [31:0] m);
+    sat16 = (m >>> 9) > 32'sd32767 ? 16'sd32767 : (m >>> 9) < -32'sd32768 ? -16'sd32768 : 16'(m >>> 9);
+endfunction
 
 // E2 results
 logic signed [31:0] acc_n, wd_n;
@@ -195,6 +207,7 @@ always_ff @(posedge clk) begin
         st  <= S_CLR;
         clr <= 8'd0;
         out <= 16'sd0;
+        out_r <= 16'sd0;
     end else case (st)
         S_CLR: begin                                    // clear the state memory after reset
             clr <= clr + 8'd1;
@@ -203,6 +216,8 @@ always_ff @(posedge clk) begin
         S_IDLE: if (go) begin
             pc   <= 10'd0;
             mix  <= 32'sd0;
+            mix_r <= 32'sd0;
+            used_r <= 1'b0;
             icnt <= 9'd0;
             st   <= S_LOAD;
         end
@@ -276,11 +291,12 @@ always_ff @(posedge clk) begin
             f   <= f_n;
             if (op == 8'd19) begin : noise
                 logic nb;
-                nb = lfsr[fb[1:0]][28] ^ lfsr[fb[1:0]][0];      // 31-bit LFSR noise taps (SN76477 / discrete)
+                nb = lfsr[fb[1:0]][28] ^ lfsr[fb[1:0]][0];      // MAME SN76477 / discrete 31-bit noise taps
                 lfsr[fb[1:0]] <= {nb, lfsr[fb[1:0]][30:1]};
                 f <= nb;
             end
             if (op == 8'd20) mix <= mix + acc;
+            if (op == 8'd33) begin mix_r <= mix_r + acc; used_r <= 1'b1; end
             // the next instruction: its word is on pq now; its M reads are addressed this edge
             ir    <= pq;
             fwd_a <= we_n && pq[55:48] == fa && icnt != 9'd0;
@@ -291,7 +307,8 @@ always_ff @(posedge clk) begin
             if (icnt != 9'd0 && (op == 8'd0 || icnt + 9'(cost) - 9'd1 >= 9'd410)) st <= S_PUB;   // END, or the 410-unit budget
         end
         S_PUB: begin                                    // publish the sample (1.0 = full scale)
-            out <= (mix >>> 9) > 32'sd32767 ? 16'sd32767 : (mix >>> 9) < -32'sd32768 ? -16'sd32768 : 16'(mix >>> 9);
+            out <= sat16(mix);
+            out_r <= sat16(used_r ? mix_r : mix);
             st  <= S_IDLE;
         end
         default: st <= S_IDLE;
