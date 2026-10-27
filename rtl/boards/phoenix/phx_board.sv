@@ -1,23 +1,25 @@
 //============================================================================
-//  Phoenix-family board (MAME phoenix/phoenix.cpp): Phoenix, its bootlegs, Pleiads, Survival.
-//  CPU, sound chips, ROMs and video RAMs are the shared pool / blocks in rtl/phoenix_board.sv (the dispatcher);
-//  this board drives them through chip_pool_pkg buses and rom<n> / ram<n> ports.
+//  Phoenix-family board: Phoenix, its bootlegs, Pleiads, Survival.
+//  Based on MAME phoenix/phoenix.cpp (license:BSD-3-Clause, copyright-holders: Richard Davies)
 //  Copyright (C) 2026 Rodimus
 //
-//  One board, runtime variants (MRA index 1):
+//  CPU, sound chips, ROMs and video RAMs are the shared pool / blocks in rtl/phoenix_board.sv (the dispatcher);
+//  this board drives them through chip_pool_pkg buses and rom<n> / pool ports.
+//
+//  Runtime variants (MRA index 1):
 //    variant 0  Phoenix map / palette (machine phoenix, condor)
 //    variant 1  Pleiads: 2-bit palette bank, protection question in the video register
-//    variant 2  Survival: AY-3-8910 at 6800 / 6900, input protection (MAME survival_input_port_0_r), SID via RIM
-//    opt[0]     one 8-bit colour PROM (MAME init_oneprom: high nibble = low PROM, low nibble = high PROM)
-//    opt[1]     DSW1 readable at 5000 (MAME init_coindsw)
+//    variant 2  Survival: AY-3-8910 at 6800 / 6900, input protection, SID via RIM
+//    opt[0]     one 8-bit colour PROM (high nibble = low PROM, low nibble = high PROM)
+//    opt[1]     DSW1 readable at 5000
 //    opt[2]     Z80 CPU (machine condor), else 8085 (T80 in 8080 mode)
 //    opt[3]     IN0 bit 3 = Pleiads protection answer
 //
-//  Index 0 layout (tools/gen_mra.py REGIONS): maincpu 0000-3FFF, bgtiles 4000-4FFF, fgtiles 5000-5FFF,
+//  Index 0 layout: maincpu 0000-3FFF, bgtiles 4000-4FFF, fgtiles 5000-5FFF,
 //  proms 6000-61FF (low PROM 6000, high PROM 6100)
 //
-//  Clock 44 MHz = 8 x 5.5 MHz pixel; CPU 2.75 MHz (8085 = 5.5 MHz crystal / 2). Raster as MAME phoenix.h:
-//  352 x 256 total, 256 x 208 visible.
+//  Clock 44 MHz = 8 x 5.5 MHz pixel; CPU 2.75 MHz (8085 = 5.5 MHz crystal / 2).
+//  Raster 352 x 256 total, 256 x 208 visible.
 //============================================================================
 
 module phx_board
@@ -52,11 +54,9 @@ module phx_board
     output wire [10:0] rom4_a,  input wire [7:0] rom4_d,
     output wire  [7:0] rom5_a,  input wire [7:0] rom5_d,
     output wire  [7:0] rom6_a,  input wire [7:0] rom6_d,
-    // shared RAM blocks: ram0 fg video RAM, ram1 bg video RAM (port A CPU, port B display)
-    output wire [11:0] ram0_a,  output wire [7:0] ram0_wd, output wire ram0_we, input wire [7:0] ram0_q,
-    output wire [11:0] ram0_ba, input  wire [7:0] ram0_bq,
-    output wire [11:0] ram1_a,  output wire [7:0] ram1_wd, output wire ram1_we, input wire [7:0] ram1_q,
-    output wire [11:0] ram1_ba, input  wire [7:0] ram1_bq,
+    // board RAM pool: block 0 fg video RAM, block 1 bg video RAM (port A CPU, port B display)
+    output ram_pool_pkg::pram_i_t [1:0] pr_i,
+    input  ram_pool_pkg::pram_o_t [1:0] pr_o,
 
     input  wire        crt_flip,
     input  wire  [3:0] h_adj,
@@ -94,7 +94,7 @@ assign ce_pix    = div[2:0] == 3'd7;
 wire   cpu_cen_p = (opt[2] ? div == 4'd15 : div[2:0] == 3'd7) && !pause;
 wire   cpu_cen_n = (opt[2] ? div == 4'd7  : div[2:0] == 3'd3) && !pause;
 
-// ---------------------------------------------------------------- raster (MAME HTOTAL 352, VTOTAL 256)
+// ---------------------------------------------------------------- raster (352 x 256 total)
 reg [8:0] hcnt = 9'd0;
 reg [7:0] vcnt = 8'd0;
 always @(posedge clk) if (ce_pix) begin
@@ -153,7 +153,7 @@ assign cpu_m1   = ~m1_n & ~mreq_n;
 wire mem_rd = ~mreq_n & ~rd_n & rfsh_n;
 
 // ---------------------------------------------------------------- 8085 instruction pacing
-// MAME i8085 lut_cycles_8085 (generated from i8085.cpp) + taken extras: Rcc +6, JMP / Jcc +3, CALL / Ccc +9.
+// 8085 cycle counts from MAME i8085.cpp lut_cycles_8085 + taken extras: Rcc +6, JMP / Jcc +3, CALL / Ccc +9.
 // pace = clocks the 8085 timeline is ahead of real time: + 16 x cycles of each finished instruction (counted at the
 // next opcode fetch), - 1 per running clock (negative while the T80 executes); WAIT_n holds the fetch in T2 while
 // pace > 0, so every instruction starts where an 8085 at 2.75 MHz would start it.
@@ -333,7 +333,7 @@ wire cs_ayadr  = A[15:8]  == 8'h68 && v_surv;       // Survival AY address (6800
 wire cs_aydat  = A[15:8]  == 8'h69 && v_surv;       // Survival AY data (6900-69FF)
 wire cs_in0    = A[15:10] == 6'b0111_00;            // 7000-73FF
 wire cs_dsw0   = A[15:10] == 6'b0111_10;            // 7800-7BFF
-wire cs_dsw1   = opt[1] && A == 16'h5000;           // condor coinage (init_coindsw)
+wire cs_dsw1   = opt[1] && A == 16'h5000;           // condor coinage
 
 // ---------------------------------------------------------------- video / board registers
 reg       page = 1'b0;               // video RAM page (CPU and display)
@@ -360,7 +360,7 @@ always @(posedge clk) begin
     end
 end
 
-wire cocktail = page & cab[0];       // MAME m_cocktail_mode
+wire cocktail = page & cab[0];
 
 
 // ---------------------------------------------------------------- CPU ROM (shared block rom0)
@@ -373,7 +373,16 @@ reg  [10:0] fg_va, bg_va;            // display read addresses (tile index; page
 wire  [7:0] fg_cq, bg_cq, fg_vq, bg_vq;
 wire        vram_we = wr_stb & cs_vram;
 
-// shared RAM blocks ram0 (fg) / ram1 (bg): port A = CPU, port B = display
+// video RAM pool blocks 0 (fg) / 1 (bg): port A = CPU, port B = display; local names map onto the pool ports
+wire [11:0] ram0_a, ram0_ba, ram1_a, ram1_ba;
+wire  [7:0] ram0_wd, ram0_q, ram0_bq, ram1_wd, ram1_q, ram1_bq;
+wire        ram0_we, ram1_we;
+assign pr_i[0].a_addr = {3'd0, ram0_a};   assign pr_i[0].a_d = ram0_wd;  assign pr_i[0].a_we = ram0_we;
+assign pr_i[0].b_addr = {3'd0, ram0_ba};  assign pr_i[0].b_d = 8'd0;     assign pr_i[0].b_we = 1'b0;
+assign pr_i[1].a_addr = {3'd0, ram1_a};   assign pr_i[1].a_d = ram1_wd;  assign pr_i[1].a_we = ram1_we;
+assign pr_i[1].b_addr = {3'd0, ram1_ba};  assign pr_i[1].b_d = 8'd0;     assign pr_i[1].b_we = 1'b0;
+assign ram0_q = pr_o[0].a_q;  assign ram0_bq = pr_o[0].b_q;
+assign ram1_q = pr_o[1].a_q;  assign ram1_bq = pr_o[1].b_q;
 assign ram0_a  = {page, A[10:0]};  assign ram0_wd = cpu_do;  assign ram0_we = vram_we & ~A[11];  assign fg_cq = ram0_q;
 assign ram1_a  = {page, A[10:0]};  assign ram1_wd = cpu_do;  assign ram1_we = vram_we &  A[11];  assign bg_cq = ram1_q;
 assign ram0_ba = {page, fg_va};    assign fg_vq = ram0_bq;
@@ -393,14 +402,14 @@ always @(*) begin
     else if (cs_dsw0) cpu_di = {~vbl, dsw0[6:0]};
 end
 
-// ---------------------------------------------------------------- Survival input protection (MAME survival_input_port_0_r)
+// ---------------------------------------------------------------- Survival input protection
 // Every third read of 7000 returns the raw port; the others return the previous read's joystick, remapped, and set the
-// AY port B / SID answers the game checks. IN0 / IN1 are active low; IN1 bits 0-2 are IN0's (schematic note in MAME).
+// AY port B / SID answers the game checks. IN0 / IN1 are active low; IN1 bits 0-2 are IN0's.
 reg  [1:0] surv_readc = 2'd0;
 reg  [7:0] surv_lat0 = 8'd0, surv_lat1 = 8'd0, surv_prot = 8'd0, surv_q = 8'd0;
 reg        in0_rd_d = 1'b0;
 wire       in0_rd = mem_rd & cs_in0;
-wire [7:0] surv_raw = ~(cocktail ? {ctrl[7:3], in0[2:0]} : in0);    // active high, like MAME's ~port
+wire [7:0] surv_raw = ~(cocktail ? {ctrl[7:3], in0[2:0]} : in0);    // active high
 reg  [3:0] surv_js;
 reg        surv_s;
 reg  [7:0] surv_p;
@@ -439,7 +448,7 @@ always @(posedge clk) begin
     end
 end
 
-// AY-3-8910 at 11 MHz / 4 (MAME), port B = protection answer
+// AY-3-8910 at 11 MHz / 4, port B = protection answer
 wire [7:0] ay_dout;
 wire [9:0] ay_snd;
 // the shared AY (ay_0, jt49_bus): 6800 write = address latch (BDIR BC1 = 11), 6900 write = data (10), 6900 read (01)
@@ -454,7 +463,7 @@ assign ay_snd  = ay_0_o.sound;
 
 // ---------------------------------------------------------------- tile pipeline (one stage per pixel)
 // S0: screen position -> video RAM addresses. CRT Flip turns the picture 180 degrees; cocktail mode then inverts
-// both counters as the board does (MAME tilemap flip_all).
+// both counters as the board does.
 wire [7:0] cx = crt_flip ? 8'd255 - hcnt[7:0] : hcnt[7:0];
 wire [7:0] cy = crt_flip ? 8'd207 - vcnt : vcnt;
 wire [7:0] sx = cocktail ? ~cx : cx;
@@ -496,12 +505,12 @@ assign rom2_a = bg_ga;  assign bghi_q = rom2_d;
 assign rom3_a = fg_ga;  assign fglo_q = rom3_d;
 assign rom4_a = fg_ga;  assign fghi_q = rom4_d;
 
-// S2: gfx bytes -> pixel; MAME charlayout: plane 0 (MSB) = second half of the ROM, pixel x = bit x
+// S2: gfx bytes -> pixel; plane 0 (MSB) = second half of the ROM, pixel x = bit x
 wire [2:0] s2_fxb = s2_fx;
 wire [1:0] fpix = {fghi_q[s2_fxb], fglo_q[s2_fxb]};
 wire [1:0] bpix = {bghi_q[s2_bx],  bglo_q[s2_bx]};
 wire       use_fg = fpix != 2'd0;    // fg pen 0 transparent
-// MAME pen = colour * 4 + pixel, colour = code[7:5] | fg << 3 | bank << 4; PROM address = bitswap of the pen:
+// pen = colour * 4 + pixel, colour = code[7:5] | fg << 3 | bank << 4; PROM address = bitswap of the pen:
 // Phoenix bitswap<7>(6,5,1,0,4,3,2), Pleiads bitswap<8>(7,6,5,1,0,4,3,2) = {bank, fg, pixel, code[7:5]}
 always @(posedge clk) if (ce_pix)
     prom_a <= use_fg ? {pal_bank, 1'b1, fpix, s2_fcode[7:5]} : {pal_bank, 1'b0, bpix, s2_bcode[7:5]};
@@ -511,7 +520,7 @@ always @(posedge clk) if (ce_pix)
 assign rom5_a = prom_a;  assign prl_q = rom5_d;
 assign rom6_a = prom_a;  assign prh_q = rom6_d;
 
-// S3: PROM nibbles -> 2-bit levels (MAME phoenix_decode_info) -> RGB (tools/palette_lut.py)
+// S3: PROM nibbles -> 2-bit levels -> RGB (tools/palette_lut.py)
 wire [3:0] p0 = opt[0] ? prh_q[7:4] : prl_q[3:0];
 wire [3:0] p1 = prh_q[3:0];
 wire [5:0] lv = {p1[0], p0[0], p1[2], p0[2], p1[1], p0[1]};   // {R, G, B}
@@ -675,16 +684,13 @@ assign video_vs     = vs_d[DLY-1];
 // ---------------------------------------------------------------- sound
 // Effects 1 / 2 and the noise: discrete engine program (MRA index 5). Sources: 0 = control A, 1 = control B.
 wire signed [15:0] ds_out;
-assign dsnd_0_i.src = {40'd0, 7'd0, z80pa85_0_o.sod, snd_b, snd_a};   // the shared engine (dsnd_0); program = MRA index 5
-                                                    // (Pleiads: byte 2 bit 0 = 8085 SOD, set by SIM)
+assign dsnd_0_i.src = {40'd0, 7'd0, z80pa85_0_o.sod, snd_b, snd_a};
+                                                    // 8085 SOD (set by the SIM instruction) is src bit 16; used by Pleiads
 assign ds_out = dsnd_0_o.out;
 
-// MM6221AA <49>: tune select = control B bits 7-6 on every write (MAME phoenix_sound_device::control_b_w),
-// MAME clock 372, tune speed 0.21 (m_speed = 32767 / 0.21), decays 16' 0.50 s, 4' 1.05 s
 wire signed [15:0] mm_out;
-// the shared TMS36xx (tms36xx_0). Phoenix: MM6221AA tune select = 6800 bits 7-6. Pleiads (cfg_b): MAME's TMS3615
-// stand-in for the 7910, note = 6800 bits 3-0, octave = bits 7-6 (3 plays as 2), only when the latch value changes
-// (MAME pleiads_sound_device::control_b_w)
+// Phoenix: MM6221AA tune select = 6800 bits 7-6. Pleiads (cfg_b): TMS3615 stand-in for the undumped Epson 7910,
+// note = 6800 bits 3-0, octave = bits 7-6 (3 plays as 2), only when the latch value changes
 assign tms36xx_0_i.cfg_b        = v_pleiads;
 assign tms36xx_0_i.tune_we      = wr_stb & cs_sndb & !v_pleiads;
 assign tms36xx_0_i.tune         = cpu_do[7:6];
@@ -695,13 +701,13 @@ assign tms36xx_0_i.enable_we    = 1'b0;
 assign tms36xx_0_i.voice_enable = 6'd0;
 assign mm_out = tms36xx_0_o.audio;
 
-// AY (Survival): MAME route 0.5, each channel 0 .. 1.0 = jt49 0 .. 255 -> x 64 (32768 x 0.5 / 255); DC blocked (~5 Hz)
+// AY (Survival): each channel 0 .. 1.0 = jt49 0 .. 255 -> x 64 (32768 x 0.5 / 255); DC blocked (~5 Hz)
 reg  signed [26:0] ay_dc = 27'sd0;
 wire signed [11:0] ay_x  = $signed({2'b00, ay_snd}) - $signed(ay_dc[26:15]);
 always @(posedge clk) if (reset) ay_dc <= 27'sd0; else if (div == 4'd15) ay_dc <= ay_dc + 27'(ay_x);
 wire signed [16:0] ay_out = 17'(ay_x) <<< 6;
 
-// Phoenix: MAME mix, discrete 0.6 + custom noise 0.4 (both inside the engine program) + MM6221AA 0.5.
+// Phoenix: discrete 0.6 + custom noise 0.4 (both inside the engine program) + MM6221AA 0.5.
 // Pleiads: the engine = the board's effects mixer (tools/dsnd_pleiads.py) + the 7910 stand-in at ~its R84 leg level.
 // Survival: the AY.
 wire signed [16:0] mix = v_surv ? ay_out : 17'(ds_out) + (v_pleiads ? 17'(mm_out >>> 2) : 17'(mm_out >>> 1));

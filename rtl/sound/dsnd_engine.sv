@@ -40,7 +40,7 @@
 // reaches 410 units.
 // Sources (b[5:3]): 0-3 sound latches 1-4, 4 latch 0, 5 misc, 6 / 7 Game Audio settings; b[2:0] = bit.
 
-// Phoenix core copy (2026-10-23): sample period TICK clocks (Space Invaders 832 at 39.936 MHz; Phoenix 917 at 44 MHz).
+// Sample period TICK clocks (Space Invaders 832 at 39.936 MHz; Phoenix 917 at 44 MHz).
 module dsnd_engine #(parameter int TICK = 832)
 (
     input  logic        clk,            // TICK x sample rate
@@ -276,7 +276,7 @@ always_ff @(posedge clk) begin
             f   <= f_n;
             if (op == 8'd19) begin : noise
                 logic nb;
-                nb = lfsr[fb[1:0]][28] ^ lfsr[fb[1:0]][0];      // MAME SN76477 / discrete 31-bit noise taps
+                nb = lfsr[fb[1:0]][28] ^ lfsr[fb[1:0]][0];      // 31-bit LFSR noise taps (SN76477 / discrete)
                 lfsr[fb[1:0]] <= {nb, lfsr[fb[1:0]][30:1]};
                 f <= nb;
             end

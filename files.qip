@@ -1,6 +1,7 @@
 set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/chip_pool_pkg.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/ram_pool_pkg.sv
 set_global_assignment -name SYSTEMVERILOG_FILE Arcade-Phoenix.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/phoenix_board.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/boards/phoenix/phx_board.sv
@@ -14,6 +15,4 @@ set_global_assignment -name VERILOG_FILE rtl/mister_custom/pause.v
 set_global_assignment -name VERILOG_FILE rtl/mister_custom/hiscore.v
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/mister_custom/controllers.sv
 
-# DPRAMSV-2026-10-25: VHDL dpram_dc replaced by the SystemVerilog one (same ports/generics + byteena); original:
-# set_global_assignment -name VHDL_FILE rtl/ram_rom/dpram_dc.vhd
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/ram_rom/dpram_dc.sv
