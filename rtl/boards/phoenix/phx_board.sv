@@ -3,7 +3,7 @@
 //  Based on MAME phoenix/phoenix.cpp (license:BSD-3-Clause, copyright-holders: Richard Davies)
 //  Copyright (C) 2026 Rodimus
 //
-//  CPU, sound chips, ROMs and video RAMs are the shared pool / blocks in rtl/phoenix_board.sv (the dispatcher);
+//  CPU, sound chips, ROMs and video RAMs are the shared pool / blocks in rtl/phoenix_dispatcher.sv (the dispatcher);
 //  this board drives them through chip_pool_pkg buses and rom<n> / pool ports.
 //
 //  Runtime variants (MRA index 1):
@@ -37,7 +37,7 @@ module phx_board
     input  wire  [7:0] dsw1,         // MRA port 3: DSW1 (condor coinage)
     input  wire  [7:0] cab,          // MRA port 4: CAB (bit 0 cocktail)
 
-    // shared pool (rtl/phoenix_board.sv)
+    // shared pool (rtl/phoenix_dispatcher.sv)
     output chip_pool_pkg::z80pa85_i_t z80pa85_0_i,
     input  chip_pool_pkg::z80pa85_o_t z80pa85_0_o,
     output chip_pool_pkg::ay_i_t      ay_0_i,

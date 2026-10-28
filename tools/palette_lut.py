@@ -3,7 +3,7 @@
 R/G/B level -> 8-bit RGB. Network (phoenix_v.cpp): open-collector PROM bits, 100R pull-up to 5 V, 270R to ground,
 bit 0 through R0 (270R Phoenix / Pleiads, 180R Survival), bit 1 through 1R.
 normalize_range scales by the darkest / brightest pen of the PROM palette: ASSUMED to be level 0 / level 3 on every
-channel (black and white present). Prints the SystemVerilog case table for rtl/boards/phoenix/phoenix_board.sv."""
+channel (black and white present). Prints the SystemVerilog case table for rtl/boards/phoenix/phoenix_dispatcher.sv."""
 import sys
 
 VOL = 0.05

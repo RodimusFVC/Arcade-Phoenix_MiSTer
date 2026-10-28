@@ -12,7 +12,7 @@
 //  Index 5: discrete sound engine program.
 //============================================================================
 
-module phoenix_board
+module phoenix_dispatcher
 (
     input  wire        clk,
     input  wire        reset,

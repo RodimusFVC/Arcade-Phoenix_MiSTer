@@ -2,7 +2,7 @@
 //  board_template.sv: starting point for a new board (copy it; not listed in files.qip, never compiled).
 //  Copyright (C) 2026 Rodimus
 //
-//  Boards own no CPU, sound chip, ROM store or board RAM; those live once in rtl/phoenix_board.sv and the board
+//  Boards own no CPU, sound chip, ROM store or board RAM; those live once in rtl/phoenix_dispatcher.sv and the board
 //  drives the pool ports below. To add a board: add it to files.qip and verilator/Makefile, instance it in the
 //  dispatcher's "Boards" section and put it on the variant muxes. For more RAM, grow RAM_BLOCKS / RAM_AW in the
 //  dispatcher. A private RAM / chip that cannot pool needs "// POOL-EXCEPTION: <reason>" on its instance line.

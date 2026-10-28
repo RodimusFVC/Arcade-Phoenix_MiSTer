@@ -3,7 +3,7 @@ set_global_assignment -name VHDL_INPUT_VERSION VHDL_2008
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/chip_pool_pkg.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/ram_pool_pkg.sv
 set_global_assignment -name SYSTEMVERILOG_FILE Arcade-Phoenix.sv
-set_global_assignment -name SYSTEMVERILOG_FILE rtl/phoenix_board.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/phoenix_dispatcher.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/boards/phoenix/phx_board.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/sound/dsnd_engine.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/sound/tms36xx.sv

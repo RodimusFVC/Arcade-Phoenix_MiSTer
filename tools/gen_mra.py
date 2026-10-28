@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate MRAs for the Phoenix core straight from MAME phoenix/phoenix.cpp.
 
-Region placement matches rtl/phoenix_board.sv (shared ROM blocks); images are copied as dumped.
+Region placement matches rtl/phoenix_dispatcher.sv (shared ROM blocks); images are copied as dumped.
 DIP switches and the input map come from the set's MAME INPUT_PORTS.
 
 Release layout: a parent set (MAME parent 0) goes to <releases>/<Title>.mra with the
@@ -582,7 +582,7 @@ def mra(g, games, segs, build_inputs):
 {dip_lines}
     </switches>
 
-    <!-- Index 0: MAME regions, layout in rtl/phoenix_board.sv -->
+    <!-- Index 0: MAME regions, layout in rtl/phoenix_dispatcher.sv -->
     <rom index="0" md5="none" zip="{zipname}">
 {part_lines(segs.get(0, []))}
     </rom>

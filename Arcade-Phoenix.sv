@@ -344,7 +344,7 @@ arcade_video #(256,24) arcade_video
 
 ///////////////                 Board                  ////////////////
 
-phoenix_board board
+phoenix_dispatcher board
 (
 	.clk(CLK_SYS),
 	.reset(reset),
