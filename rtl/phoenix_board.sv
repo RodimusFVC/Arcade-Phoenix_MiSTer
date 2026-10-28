@@ -164,7 +164,9 @@ dsnd_engine #(.TICK(917)) dsnd_0
     .clk(clk), .reset(reset), .pause(pause),
     .prog_wr(prog_wr), .prog_addr(prog_addr), .prog_data(prog_data),
     .src(dsnd_0_i.src),
-    .out(dsnd_0_out)
+    // DSNDMERGE-2026-10-27: original below (dsnd_o_t now carries out_r / sample)
+    // .out(dsnd_0_out)
+    .out(dsnd_0_out), .out_r(dsnd_0_o.out_r), .sample(dsnd_0_o.sample)
 );
 assign dsnd_0_o.out = dsnd_0_out;
 
