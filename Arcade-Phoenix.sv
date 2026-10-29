@@ -45,7 +45,7 @@ wire  [7:0] ioctl_index;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
 wire [15:0] joystick_0, joystick_1;
-wire [15:0] joystick_r_analog_0, joystick_r_analog_1;   // right analog sticks: [15:8] Y, [7:0] X, signed
+wire [15:0] joystick_r_analog_0, joystick_r_analog_1;
 wire [21:0] gamma_bus;
 wire        direct_video;
 wire        video_rotated;
@@ -69,7 +69,7 @@ assign HDMI_BOB_DEINT = 0;
 wire signed [15:0] audio;
 assign AUDIO_L = pause_cpu ? 16'd0 : audio;
 assign AUDIO_R = pause_cpu ? 16'd0 : audio;
-assign AUDIO_S = 1;   // signed
+assign AUDIO_S = 1;
 assign AUDIO_MIX = 0;
 
 assign LED_DISK  = 0;
@@ -77,18 +77,6 @@ assign LED_POWER = 0;
 assign LED_USER  = ioctl_download;
 assign BUTTONS = 0;
 
-///////////////////////////////////////////////////
-
-// MRA index 1:
-//   byte 0      board variant (see rtl/boards/phoenix/phx_board.sv)
-//   byte 1      flags: [0] 4-way joystick, [2] coins are 2-frame pulses, [4] vertical, [7] vertical is ROT90
-//   byte 2      board options (see rtl/boards/phoenix/phx_board.sv)
-//   byte 3      reserved
-//   bytes 4-9   idle level of every bit of the 6 ports (board order)
-//   bytes 10-15 per port: DIP switch byte that supplies it (bit 7 set = none, use the idle byte)
-//   bytes 16-63 input map, one byte per port bit (bit 0 first): control id, 0 = none; a pressed control inverts its bit
-// Only DIP ports go in the MRA switch bytes: Main_MiSTer builds the default as int shifts, so a byte >= 0x80 at
-// position 3 sign-extends over bytes 4-7, and bytes 4+ are shifted by 32+ (mra_loader.cpp: binary[i] << (i * 8))
 reg [7:0] game_var    = 8'd0;
 reg [7:0] game_flags  = 8'h11;
 reg [7:0] board_opt   = 8'd0;
@@ -97,8 +85,8 @@ reg [5:0] in_map[48];
 reg [7:0] port_idle[6] = '{8'hFF,8'hFF,8'hFF,8'hFF,8'hFF,8'h00};
 reg [7:0] port_dip[6]  = '{8'h80,8'h80,8'h80,8'h80,8'h80,8'h80};
 wire [5:0] map_idx  = ioctl_addr[5:0] - 6'd16;
-wire [2:0] idle_idx = ioctl_addr[2:0] - 3'd4;      // bytes 4-9  -> 0-5
-wire [3:0] dip_idx4 = ioctl_addr[3:0] - 4'd10;     // bytes 10-15 -> 0-5
+wire [2:0] idle_idx = ioctl_addr[2:0] - 3'd4;
+wire [3:0] dip_idx4 = ioctl_addr[3:0] - 4'd10;
 wire [2:0] dip_idx  = dip_idx4[2:0];
 
 always @(posedge CLK_SYS) begin
@@ -180,10 +168,6 @@ hps_io #(.CONF_STR(CONF_STR)) hps_io
 	.ps2_key(ps2_key)
 );
 
-////////////////////   CLOCKS   ///////////////////
-
-// CLK_SYS 44 MHz = 8 x 5.5 MHz pixel clock
-
 pll pll
 (
 	.refclk(CLK_50M),
@@ -213,67 +197,55 @@ pll_cfg pll_cfg
 	.reconfig_from_pll(reconfig_from_pll)
 );
 
-// Hold the board in reset until the PLL is locked and the ROM download has finished
 wire reset = RESET | status[0] | buttons[1] | ioctl_download | ~locked;
 
-///////////////////         Keyboard           //////////////////
-
-// kb: [0] up [1] down [2] left [3] right [4] Btn 1 (Ctrl) [5] Btn 2 (Alt) [6] Start 1 [7] Start 2 [8] Coin 1 [9] Coin 2 [10] Service [11] Tilt [12] Pause
 wire [12:0] kb;
 /* verilator lint_off PINCONNECTEMPTY */
 ctl_keyboard keyboard(.clk(CLK_SYS), .ps2_key(ps2_key), .pause(pause_cpu), .kb(kb), .kbx());
 /* verilator lint_on PINCONNECTEMPTY */
 
-//////////////////  Arcade Buttons/Interfaces   ///////////////////////////
-
-// Joystick bits: 0 R, 1 L, 2 D, 3 U, 4-7 Btn 1-4, 8 Coin, 9 Start 1P, 10 Start 2P, 11 Pause, 12-13 Btn 5-6, 14 Rack Test (unmapped)
 wire [3:0] dir1_raw = {joystick_0[3] | kb[0], joystick_0[2] | kb[1], joystick_0[1] | kb[2], joystick_0[0] | kb[3]};
 wire [3:0] dir2_raw = joystick_1[3:0];
-wire [3:0] dir1, dir2;   // {U, D, L, R}
+wire [3:0] dir1, dir2;
 
 ctl_joy4way joy4way_1(.clk(CLK_SYS), .en(game_flags[0]), .in(dir1_raw), .out(dir1));
 ctl_joy4way joy4way_2(.clk(CLK_SYS), .en(game_flags[0]), .in(dir2_raw), .out(dir2));
 
 wire m_pause = joystick_0[11] | kb[12];
 
-// Coin presses are held for two frames when game_flags[2] is set
 wire coin1, coin2;
 ctl_coin_impulse #(.PAUSE_MODE(1)) coin_imp1(.clk(CLK_SYS), .pause(pause_cpu), .vblank(vblank), .en(game_flags[2]),
                            .coin_raw(joystick_0[8] | kb[8]), .coin(coin1));
 ctl_coin_impulse #(.PAUSE_MODE(1)) coin_imp2(.clk(CLK_SYS), .pause(pause_cpu), .vblank(vblank), .en(game_flags[2]),
                            .coin_raw(joystick_1[8] | kb[9]), .coin(coin2));
 
-// Rack Test cheat: held, or toggled on each press
 wire rack_btn = joystick_0[14] | joystick_1[14];
 wire rack_tog;
 ctl_toggle rack_toggle(.clk(CLK_SYS), .clear(ioctl_download), .btn(rack_btn), .pause(pause_cpu), .q(rack_tog));
 
-// Twin stick: right-hand stick = right analog stick, or Btn 3-6 = R Right / Left / Down / Up
-wire [3:0] rstick0, rstick1;   // {U, D, L, R}
+wire [3:0] rstick0, rstick1;
 ctl_stick_dirs #(.MODE(0), .THRESH(7'd48)) rstick_0(.stick(joystick_r_analog_0), .dir(rstick0));
 ctl_stick_dirs #(.MODE(0), .THRESH(7'd48)) rstick_1(.stick(joystick_r_analog_1), .dir(rstick1));
 
-// Control ids used by the MRA input map; 24-31 reserved for analog
 wire [35:0] ctl36;
 ctl_ids ids(.joy0(joystick_0), .joy1(joystick_1), .kb(kb), .dir1(dir1), .dir2(dir2),
             .coin1(coin1), .coin2(coin2), .coin3(1'b0), .ctl(ctl36));
 wire [63:0] ctl =
 {
 	18'd0,
-	joystick_1[13] | rstick1[3],                    // 45 P2 R Up    (Btn 6)
-	joystick_1[12] | rstick1[2],                    // 44 P2 R Down  (Btn 5)
-	joystick_1[7]  | rstick1[1],                    // 43 P2 R Left  (Btn 4)
-	joystick_1[6]  | rstick1[0],                    // 42 P2 R Right (Btn 3)
-	joystick_0[13] | rstick0[3],                    // 41 P1 R Up    (Btn 6)
-	joystick_0[12] | rstick0[2],                    // 40 P1 R Down  (Btn 5)
-	joystick_0[7]  | rstick0[1],                    // 39 P1 R Left  (Btn 4)
-	joystick_0[6]  | rstick0[0],                    // 38 P1 R Right (Btn 3)
-	rack_tog,                                       // 37 rack test (toggle)
-	rack_btn,                                       // 36 rack test (held)
-	ctl36                                           // 35-0 shared ids
+	joystick_1[13] | rstick1[3],
+	joystick_1[12] | rstick1[2],
+	joystick_1[7]  | rstick1[1],
+	joystick_1[6]  | rstick1[0],
+	joystick_0[13] | rstick0[3],
+	joystick_0[12] | rstick0[2],
+	joystick_0[7]  | rstick0[1],
+	joystick_0[6]  | rstick0[0],
+	rack_tog,
+	rack_btn,
+	ctl36
 };
 
-// DIP switches arrive from the OSD via ioctl index 254
 reg [7:0] dip_sw[8] = '{8'hFF,8'hFF,8'hFF,8'hFF,8'h00,8'h00,8'h00,8'h00};
 always @(posedge CLK_SYS) begin
 	if (ioctl_wr && (ioctl_index == 8'd254) && !ioctl_addr[24:3])
@@ -288,7 +260,7 @@ genvar gi;
 generate
 	for (gi = 0; gi < 6; gi = gi + 1) begin : g_port
 		assign port_idle_flat[gi*8 +: 8] = port_idle[gi];
-		assign port_sel_flat[gi*8 +: 8]  = port_dip[gi];   // [7] = 1: idle byte, else DIP byte [2:0]
+		assign port_sel_flat[gi*8 +: 8]  = port_dip[gi];
 		assign in_port[gi] = in_ports[gi*8 +: 8];
 	end
 	for (gi = 0; gi < 8; gi = gi + 1) begin : g_dip
@@ -304,7 +276,6 @@ ctl_port_map #(.NP(6), .IDW(6), .BASE_MODE(1)) port_map
 	.dip_bytes(dip_bytes_flat), .dip_bit(144'd0), .ctl(ctl), .ovr_mask(48'd0), .ovr_val(48'd0), .ports(in_ports)
 );
 
-// PAUSE SYSTEM
 wire [23:0] rgb_out;
 pause #(8,8,8,20) pause
 (
@@ -315,13 +286,11 @@ pause #(8,8,8,20) pause
 	.options(~status[20:19])
 );
 
-///////////////                 Video                  ////////////////
-
 wire hs, vs;
 wire [7:0] r, g, b;
 wire ce_pix;
 
-wire rotate_ccw = ~game_flags[7];  // ROT270 sets rotate CCW, ROT90 sets CW
+wire rotate_ccw = ~game_flags[7];
 wire no_rotate  = ~game_vert | status[12] | direct_video;
 wire flip       = status[11];
 
@@ -341,8 +310,6 @@ arcade_video #(256,24) arcade_video
 
 	.fx(status[18:16])
 );
-
-///////////////                 Board                  ////////////////
 
 phoenix_dispatcher board
 (
@@ -389,7 +356,6 @@ phoenix_dispatcher board
 	.hs_write(hs_write_enable)
 );
 
-// Hiscore: config = MRA index 3, dump = index 4; RAM via the board's second port while the CPU is paused
 wire [15:0] hs_address;
 wire  [7:0] hs_data_in;
 wire  [7:0] hs_data_out;

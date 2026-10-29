@@ -1,16 +1,4 @@
-//============================================================================
-//  Phoenix core dispatcher: the boards and the shared CPU / sound chip pool, ROM and RAM blocks
 //  Copyright (C) 2026 Rodimus
-//
-//  Only one board runs at a time, so every CPU, sound chip, ROM and board RAM exists once, here, and the active
-//  board drives it through chip_pool_pkg buses / rom<n> / pool ports. Board (selected by the MRA variant byte):
-//    phx  rtl/boards/phoenix/phx_board.sv  Phoenix + bootlegs (8085 / Z80), Pleiads, Survival
-//
-//  Index 0 layout:
-//    rom0 0000-3FFF maincpu   rom1 4000-47FF bgtiles plane 1   rom2 4800-4FFF bgtiles plane 0
-//    rom3 5000-57FF fgtiles plane 1   rom4 5800-5FFF fgtiles plane 0   rom5 6000-60FF / rom6 6100-61FF colour PROMs
-//  Index 5: discrete sound engine program.
-//============================================================================
 
 module phoenix_dispatcher
 (
@@ -30,7 +18,7 @@ module phoenix_dispatcher
     input  wire [24:0] ioctl_addr,
     input  wire  [7:0] ioctl_dout,
     input  wire        ioctl_wr0,
-    input  wire        prog_wr,      // MRA index 5: discrete sound engine program
+    input  wire        prog_wr,
     input  wire [12:0] prog_addr,
     input  wire  [7:0] prog_data,
 
@@ -59,7 +47,7 @@ module phoenix_dispatcher
 
 /////////////////////////////  Boards  /////////////////////////////
 
-localparam RAM_BLOCKS = 2;           // board RAM pool: block count, address width
+localparam RAM_BLOCKS = 2;
 localparam RAM_AW     = 12;
 
 chip_pool_pkg::z80pa85_i_t phx_z80pa85_0_i, z80pa85_0_i;
@@ -100,7 +88,6 @@ phx_board u_phx
     .hs_address(hs_address), .hs_data_in(hs_data_in), .hs_data_out(hs_data_out), .hs_write(hs_write)
 );
 
-// one board so far: its buses drive the pool directly
 assign z80pa85_0_i = phx_z80pa85_0_i;
 assign ay_0_i      = phx_ay_0_i;
 assign tms36xx_0_i = phx_tms36xx_0_i;
@@ -164,22 +151,19 @@ dsnd_engine #(.TICK(917)) dsnd_0
     .clk(clk), .reset(reset), .pause(pause),
     .prog_wr(prog_wr), .prog_addr(prog_addr), .prog_data(prog_data),
     .src(dsnd_0_i.src),
-    // DSNDMERGE-2026-10-27: original below (dsnd_o_t now carries out_r / sample)
-    // .out(dsnd_0_out)
     .out(dsnd_0_out), .out_r(dsnd_0_o.out_r), .sample(dsnd_0_o.sample)
 );
 assign dsnd_0_o.out = dsnd_0_out;
 
 /////////////////////////////  Shared ROM blocks  /////////////////////////////
-// port A = the index-0 download, port B = the board's reads
 
-wire load_rom0 = ioctl_wr0 && ioctl_addr[24:14] == 11'd0;          // 0000-3FFF
-wire load_rom1 = ioctl_wr0 && ioctl_addr[24:11] == 14'h08;         // 4000-47FF
-wire load_rom2 = ioctl_wr0 && ioctl_addr[24:11] == 14'h09;         // 4800-4FFF
-wire load_rom3 = ioctl_wr0 && ioctl_addr[24:11] == 14'h0A;         // 5000-57FF
-wire load_rom4 = ioctl_wr0 && ioctl_addr[24:11] == 14'h0B;         // 5800-5FFF
-wire load_rom5 = ioctl_wr0 && ioctl_addr[24:8]  == 17'h60;         // 6000-60FF
-wire load_rom6 = ioctl_wr0 && ioctl_addr[24:8]  == 17'h61;         // 6100-61FF
+wire load_rom0 = ioctl_wr0 && ioctl_addr[24:14] == 11'd0;
+wire load_rom1 = ioctl_wr0 && ioctl_addr[24:11] == 14'h08;
+wire load_rom2 = ioctl_wr0 && ioctl_addr[24:11] == 14'h09;
+wire load_rom3 = ioctl_wr0 && ioctl_addr[24:11] == 14'h0A;
+wire load_rom4 = ioctl_wr0 && ioctl_addr[24:11] == 14'h0B;
+wire load_rom5 = ioctl_wr0 && ioctl_addr[24:8]  == 17'h60;
+wire load_rom6 = ioctl_wr0 && ioctl_addr[24:8]  == 17'h61;
 
 dpram_dc #(.widthad_a(14)) rom0 (.clock_a(clk), .address_a(ioctl_addr[13:0]), .data_a(ioctl_dout), .wren_a(load_rom0), .byteena_a(1'b1), .q_a(),
                                  .clock_b(clk), .address_b(rom0_a), .data_b(8'd0), .wren_b(1'b0), .byteena_b(1'b1), .q_b(rom0_d));
@@ -197,8 +181,6 @@ dpram_dc #(.widthad_a(8))  rom6 (.clock_a(clk), .address_a(ioctl_addr[7:0]),  .d
                                  .clock_b(clk), .address_b(rom6_a), .data_b(8'd0), .wren_b(1'b0), .byteena_b(1'b1), .q_b(rom6_d));
 
 /////////////////////////////  Shared RAM pool  /////////////////////////////
-// Block 0: fg video RAM (2 pages x 2K); block 1: bg video RAM (2 pages x 2K). Port A = CPU, port B = display.
-// dsnd_engine program / work RAMs are not pooled (64- / 32-bit wide, part of dsnd_0).
 
 genvar n;
 generate

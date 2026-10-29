@@ -1,26 +1,5 @@
-//============================================================================
-//  Phoenix-family board: Phoenix, its bootlegs, Pleiads, Survival.
 //  Based on MAME phoenix/phoenix.cpp (license:BSD-3-Clause, copyright-holders: Richard Davies)
 //  Copyright (C) 2026 Rodimus
-//
-//  CPU, sound chips, ROMs and video RAMs are the shared pool / blocks in rtl/phoenix_dispatcher.sv (the dispatcher);
-//  this board drives them through chip_pool_pkg buses and rom<n> / pool ports.
-//
-//  Runtime variants (MRA index 1):
-//    variant 0  Phoenix map / palette (machine phoenix, condor)
-//    variant 1  Pleiads: 2-bit palette bank, protection question in the video register
-//    variant 2  Survival: AY-3-8910 at 6800 / 6900, input protection, SID via RIM
-//    opt[0]     one 8-bit colour PROM (high nibble = low PROM, low nibble = high PROM)
-//    opt[1]     DSW1 readable at 5000
-//    opt[2]     Z80 CPU (machine condor), else 8085 (T80 in 8080 mode)
-//    opt[3]     IN0 bit 3 = Pleiads protection answer
-//
-//  Index 0 layout: maincpu 0000-3FFF, bgtiles 4000-4FFF, fgtiles 5000-5FFF,
-//  proms 6000-61FF (low PROM 6000, high PROM 6100)
-//
-//  Clock 44 MHz = 8 x 5.5 MHz pixel; CPU 2.75 MHz (8085 = 5.5 MHz crystal / 2).
-//  Raster 352 x 256 total, 256 x 208 visible.
-//============================================================================
 
 module phx_board
 (
@@ -31,13 +10,12 @@ module phx_board
     input  wire  [7:0] opt,
     output wire        ce_pix,
 
-    input  wire  [7:0] in0,          // MRA port 0: IN0 (bits 4-7 come from ctrl)
-    input  wire  [7:0] ctrl,         // MRA port 1: CTRL (P1 nibble 0, P2 nibble 1) / Survival IN1
+    input  wire  [7:0] in0,
+    input  wire  [7:0] ctrl,
     input  wire  [7:0] dsw0,         // MRA port 2: DSW0 (bit 7 = vblank)
-    input  wire  [7:0] dsw1,         // MRA port 3: DSW1 (condor coinage)
-    input  wire  [7:0] cab,          // MRA port 4: CAB (bit 0 cocktail)
+    input  wire  [7:0] dsw1,
+    input  wire  [7:0] cab,
 
-    // shared pool (rtl/phoenix_dispatcher.sv)
     output chip_pool_pkg::z80pa85_i_t z80pa85_0_i,
     input  chip_pool_pkg::z80pa85_o_t z80pa85_0_o,
     output chip_pool_pkg::ay_i_t      ay_0_i,
@@ -46,7 +24,6 @@ module phx_board
     input  chip_pool_pkg::tms36xx_o_t tms36xx_0_o,
     output chip_pool_pkg::dsnd_i_t    dsnd_0_i,
     input  chip_pool_pkg::dsnd_o_t    dsnd_0_o,
-    // shared ROM blocks (port B reads): rom0 CPU, rom1 / rom2 bg planes, rom3 / rom4 fg planes, rom5 / rom6 PROMs
     output wire [13:0] rom0_a,  input wire [7:0] rom0_d,
     output wire [10:0] rom1_a,  input wire [7:0] rom1_d,
     output wire [10:0] rom2_a,  input wire [7:0] rom2_d,
@@ -54,7 +31,6 @@ module phx_board
     output wire [10:0] rom4_a,  input wire [7:0] rom4_d,
     output wire  [7:0] rom5_a,  input wire [7:0] rom5_d,
     output wire  [7:0] rom6_a,  input wire [7:0] rom6_d,
-    // board RAM pool: block 0 fg video RAM, block 1 bg video RAM (port A CPU, port B display)
     output ram_pool_pkg::pram_i_t [1:0] pr_i,
     input  ram_pool_pkg::pram_o_t [1:0] pr_o,
 
@@ -72,7 +48,6 @@ module phx_board
 
     output wire signed [15:0] audio,
 
-    // CPU probes for the sim harness
     output wire [15:0] cpu_addr,
     output wire        cpu_m1,
 
@@ -85,16 +60,12 @@ module phx_board
 wire v_pleiads = variant == 8'd1;
 wire v_surv    = variant == 8'd2;
 
-// ---------------------------------------------------------------- clock enables
 reg [3:0] div = 4'd0;
 always @(posedge clk) div <= div + 4'd1;
 assign ce_pix    = div[2:0] == 3'd7;
-// 8085 (opt[2] = 0): T80 at 5.5 MHz, paced per instruction to the 8085's cycle counts at 2.75 MHz (below);
-// Z80 bootlegs (opt[2] = 1): T80 at 2.75 MHz with its own Z80 timing
 wire   cpu_cen_p = (opt[2] ? div == 4'd15 : div[2:0] == 3'd7) && !pause;
 wire   cpu_cen_n = (opt[2] ? div == 4'd7  : div[2:0] == 3'd3) && !pause;
 
-// ---------------------------------------------------------------- raster (352 x 256 total)
 reg [8:0] hcnt = 9'd0;
 reg [7:0] vcnt = 8'd0;
 always @(posedge clk) if (ce_pix) begin
@@ -104,15 +75,9 @@ always @(posedge clk) if (ce_pix) begin
     end else
         hcnt <= hcnt + 9'd1;
 end
-wire hbl = hcnt[8];                  // 256-351
-wire vbl = vcnt >= 8'd208;           // 208-255
+wire hbl = hcnt[8];
+wire vbl = vcnt >= 8'd208;
 
-// Sync from the schematic (CPU board, Centuri 364-62-0900): board H counts 160-511 (LS163 <1>/<4> load 0xA0, H9 =
-// LS74 <5>), hcnt = H - 256 for H9 = 1, H + 96 for H9 = 0; V free-runs 0-255 (LS163 <12>/<13>).
-//   HSYNC = LS138 <87> outputs 3 / 4 (H9 = 0, H7-H5 = 011 / 100) = H 176-207 = hcnt 272-303
-//   VSYNC = LS138 <47> output 4 (V8 V7 = 11, V6-V4 = 100) = lines 224-231
-//   H: active 0-255, front porch 16, sync 32, back porch 48;  V: active 0-207, front porch 16, sync 8, back porch 24
-// CRT position offsets move the sync start (porches stay > 0 over the +-8 range).
 wire [8:0] hs_start = 9'd272 - {{5{h_adj[3]}}, h_adj};
 wire [7:0] vs_start = 8'd224 - {{4{v_adj[3]}}, v_adj};
 wire [8:0] hs_end   = hs_start + 9'd32;
@@ -120,16 +85,13 @@ wire [7:0] vs_end   = vs_start + 8'd8;
 wire hsync = hcnt >= hs_start && hcnt < hs_end;
 wire vsync = vcnt >= vs_start && vcnt < vs_end;
 
-// ---------------------------------------------------------------- CPU (T80pa: 8085 as 8080 mode, or Z80)
 wire [15:0] A;
-reg         surv_sid = 1'b0;     // Survival protection: 8085 SID pin
-wire        cpu_wait_n;          // 8085 instruction pacing (below)
+reg         surv_sid = 1'b0;
+wire        cpu_wait_n;
 wire  [7:0] cpu_do;
 reg   [7:0] cpu_di;
 wire        m1_n, mreq_n, rd_n, wr_n, rfsh_n;
 
-
-// the shared T80pa (z80pa85_0)
 assign z80pa85_0_i.cen_p  = cpu_cen_p;
 assign z80pa85_0_i.cen_n  = cpu_cen_n;
 assign z80pa85_0_i.wait_n = cpu_wait_n;
@@ -152,11 +114,6 @@ assign cpu_m1   = ~m1_n & ~mreq_n;
 
 wire mem_rd = ~mreq_n & ~rd_n & rfsh_n;
 
-// ---------------------------------------------------------------- 8085 instruction pacing
-// 8085 cycle counts from MAME i8085.cpp lut_cycles_8085 + taken extras: Rcc +6, JMP / Jcc +3, CALL / Ccc +9.
-// pace = clocks the 8085 timeline is ahead of real time: + 16 x cycles of each finished instruction (counted at the
-// next opcode fetch), - 1 per running clock (negative while the T80 executes); WAIT_n holds the fetch in T2 while
-// pace > 0, so every instruction starts where an 8085 at 2.75 MHz would start it.
 function automatic [4:0] cyc_base (input [7:0] op);
     case (op)
         8'h01: cyc_base = 5'd10;
@@ -292,7 +249,6 @@ reg        m1_d = 1'b0, op_valid = 1'b0;
 reg signed [11:0] pace = 12'sd0;
 wire       m1_now = ~m1_n & ~mreq_n;
 wire       m1_rise = m1_now & ~m1_d;
-// the finished instruction's 8085 cycles, judged by where the next fetch went
 wire [2:0] op_len  = (op_cur[7:6] == 2'b11 && op_cur[2:0] == 3'b010) || (op_cur[7:6] == 2'b11 && op_cur[2:0] == 3'b100) ||
                      op_cur == 8'hC3 || op_cur == 8'hCD ? 3'd3 : 3'd1;
 wire       seq     = A == pc_cur + 16'(op_len);
@@ -312,34 +268,33 @@ always @(posedge clk) begin
             pace     <= pace + (op_valid ? $signed({2'b0, cyc_clk}) : 12'sd0) - (pause ? 12'sd0 : 12'sd1);
             pc_cur   <= A;
             op_valid <= 1'b1;
-        end else if (!pause && pace > -12'sd1024)   // runs below 0 while the T80 executes; floor = runaway guard
+        end else if (!pause && pace > -12'sd1024)
             pace <= pace - 12'sd1;
-        if (~m1_now & m1_d) op_cur <= di_d;          // opcode = the data on the last clock of the fetch
+        if (~m1_now & m1_d) op_cur <= di_d;
     end
 end
 assign cpu_wait_n = !(m1_now && pace > 12'sd0);
 wire mem_wr = ~mreq_n & ~wr_n;
 reg  wr_d = 1'b0;
 always @(posedge clk) wr_d <= mem_wr;
-wire wr_stb = mem_wr & ~wr_d;        // one clock per CPU write
+wire wr_stb = mem_wr & ~wr_d;
 
-wire cs_rom    = A[15:14] == 2'b00;                 // 0000-3FFF
-wire cs_vram   = A[15:12] == 4'h4;                  // 4000-4FFF
-wire cs_vreg   = A[15:10] == 6'b0101_00;            // 5000-53FF
-wire cs_scroll = A[15:10] == 6'b0101_10;            // 5800-5BFF
-wire cs_snda   = A[15:10] == 6'b0110_00 && !v_surv; // 6000-63FF
-wire cs_sndb   = A[15:10] == 6'b0110_10 && !v_surv; // 6800-6BFF
-wire cs_ayadr  = A[15:8]  == 8'h68 && v_surv;       // Survival AY address (6800-68FF)
-wire cs_aydat  = A[15:8]  == 8'h69 && v_surv;       // Survival AY data (6900-69FF)
-wire cs_in0    = A[15:10] == 6'b0111_00;            // 7000-73FF
-wire cs_dsw0   = A[15:10] == 6'b0111_10;            // 7800-7BFF
-wire cs_dsw1   = opt[1] && A == 16'h5000;           // condor coinage
+wire cs_rom    = A[15:14] == 2'b00;
+wire cs_vram   = A[15:12] == 4'h4;
+wire cs_vreg   = A[15:10] == 6'b0101_00;
+wire cs_scroll = A[15:10] == 6'b0101_10;
+wire cs_snda   = A[15:10] == 6'b0110_00 && !v_surv;
+wire cs_sndb   = A[15:10] == 6'b0110_10 && !v_surv;
+wire cs_ayadr  = A[15:8]  == 8'h68 && v_surv;
+wire cs_aydat  = A[15:8]  == 8'h69 && v_surv;
+wire cs_in0    = A[15:10] == 6'b0111_00;
+wire cs_dsw0   = A[15:10] == 6'b0111_10;
+wire cs_dsw1   = opt[1] && A == 16'h5000;
 
-// ---------------------------------------------------------------- video / board registers
-reg       page = 1'b0;               // video RAM page (CPU and display)
+reg       page = 1'b0;
 reg [1:0] pal_bank = 2'd0;
 reg [7:0] scroll = 8'd0;
-reg [7:0] prot_q = 8'd0;             // Pleiads protection question (video register & FC)
+reg [7:0] prot_q = 8'd0;
 reg [7:0] snd_a = 8'd0, snd_b = 8'd0;
 
 always @(posedge clk) begin
@@ -362,18 +317,14 @@ end
 
 wire cocktail = page & cab[0];
 
-
-// ---------------------------------------------------------------- CPU ROM (shared block rom0)
 wire [7:0] rom_q;
 assign rom0_a = A[13:0];
 assign rom_q  = rom0_d;
 
-// ---------------------------------------------------------------- video RAM: fg (A11 = 0) and bg (A11 = 1), 2 pages each
-reg  [10:0] fg_va, bg_va;            // display read addresses (tile index; page added below)
+reg  [10:0] fg_va, bg_va;
 wire  [7:0] fg_cq, bg_cq, fg_vq, bg_vq;
 wire        vram_we = wr_stb & cs_vram;
 
-// video RAM pool blocks 0 (fg) / 1 (bg): port A = CPU, port B = display; local names map onto the pool ports
 wire [11:0] ram0_a, ram0_ba, ram1_a, ram1_ba;
 wire  [7:0] ram0_wd, ram0_q, ram0_bq, ram1_wd, ram1_q, ram1_bq;
 wire        ram0_we, ram1_we;
@@ -388,8 +339,6 @@ assign ram1_a  = {page, A[10:0]};  assign ram1_wd = cpu_do;  assign ram1_we = vr
 assign ram0_ba = {page, fg_va};    assign fg_vq = ram0_bq;
 assign ram1_ba = {page, bg_va};    assign bg_vq = ram1_bq;
 
-
-// ---------------------------------------------------------------- CPU read mux
 wire [7:0] in0_v = {cocktail ? ctrl[7:4] : ctrl[3:0],
                     opt[3] ? ~(prot_q == 8'h0C || prot_q == 8'h30) : in0[3], in0[2:0]};
 always @(*) begin
@@ -402,29 +351,26 @@ always @(*) begin
     else if (cs_dsw0) cpu_di = {~vbl, dsw0[6:0]};
 end
 
-// ---------------------------------------------------------------- Survival input protection
-// Every third read of 7000 returns the raw port; the others return the previous read's joystick, remapped, and set the
-// AY port B / SID answers the game checks. IN0 / IN1 are active low; IN1 bits 0-2 are IN0's.
 reg  [1:0] surv_readc = 2'd0;
 reg  [7:0] surv_lat0 = 8'd0, surv_lat1 = 8'd0, surv_prot = 8'd0, surv_q = 8'd0;
 reg        in0_rd_d = 1'b0;
 wire       in0_rd = mem_rd & cs_in0;
-wire [7:0] surv_raw = ~(cocktail ? {ctrl[7:3], in0[2:0]} : in0);    // active high
+wire [7:0] surv_raw = ~(cocktail ? {ctrl[7:3], in0[2:0]} : in0);
 reg  [3:0] surv_js;
 reg        surv_s;
 reg  [7:0] surv_p;
 always @(*) begin
     surv_js = surv_raw[7:4]; surv_s = 1'b0; surv_p = 8'hFF;
     case (surv_raw[7:4])
-        4'h0: surv_js = 4'h7;                                  // js_nop
-        4'h1: surv_js = 4'h8;                                  // n
-        4'h2: begin surv_js = 4'h2; surv_s = 1'b1; surv_p = 8'hFE; end   // e
-        4'h3: begin surv_js = 4'hA; surv_s = 1'b1; end         // ne
-        4'h4: begin surv_js = 4'h4; surv_s = 1'b1; surv_p = 8'hFE; end   // w
-        4'h5: begin surv_js = 4'hC; surv_s = 1'b1; end         // nw
-        4'h8: surv_js = 4'h1;                                  // s
-        4'hA: begin surv_js = 4'h3; surv_s = 1'b1; end         // se
-        4'hC: begin surv_js = 4'h5; surv_s = 1'b1; end         // sw
+        4'h0: surv_js = 4'h7;
+        4'h1: surv_js = 4'h8;
+        4'h2: begin surv_js = 4'h2; surv_s = 1'b1; surv_p = 8'hFE; end
+        4'h3: begin surv_js = 4'hA; surv_s = 1'b1; end
+        4'h4: begin surv_js = 4'h4; surv_s = 1'b1; surv_p = 8'hFE; end
+        4'h5: begin surv_js = 4'hC; surv_s = 1'b1; end
+        4'h8: surv_js = 4'h1;
+        4'hA: begin surv_js = 4'h3; surv_s = 1'b1; end
+        4'hC: begin surv_js = 4'h5; surv_s = 1'b1; end
         default: ;
     endcase
 end
@@ -448,10 +394,8 @@ always @(posedge clk) begin
     end
 end
 
-// AY-3-8910 at 11 MHz / 4, port B = protection answer
 wire [7:0] ay_dout;
 wire [9:0] ay_snd;
-// the shared AY (ay_0, jt49_bus): 6800 write = address latch (BDIR BC1 = 11), 6900 write = data (10), 6900 read (01)
 assign ay_0_i.ce     = div == 4'd15 && !pause;
 assign ay_0_i.bdir   = (cs_ayadr | cs_aydat) & mem_wr;
 assign ay_0_i.bc1    = (cs_ayadr & mem_wr) | (cs_aydat & mem_rd);
@@ -461,9 +405,6 @@ assign ay_0_i.iob_in = surv_prot;
 assign ay_dout = ay_0_o.dout;
 assign ay_snd  = ay_0_o.sound;
 
-// ---------------------------------------------------------------- tile pipeline (one stage per pixel)
-// S0: screen position -> video RAM addresses. CRT Flip turns the picture 180 degrees; cocktail mode then inverts
-// both counters as the board does.
 wire [7:0] cx = crt_flip ? 8'd255 - hcnt[7:0] : hcnt[7:0];
 wire [7:0] cy = crt_flip ? 8'd207 - vcnt : vcnt;
 wire [7:0] sx = cocktail ? ~cx : cx;
@@ -479,13 +420,11 @@ reg  [7:0] prom_a;
 wire [7:0] bglo_q, bghi_q, fglo_q, fghi_q, prl_q, prh_q;
 
 always @(posedge clk) if (ce_pix) begin
-    // S0
     fg_va  <= {1'b0, sy[7:3], sx[7:3]};
     bg_va  <= {1'b0, sy[7:3], bx[7:3]};
     s1_fx  <= sx[2:0];
     s1_bx  <= bx[2:0];
     s1_row <= sy[2:0];
-    // S1: tile codes -> gfx ROM rows
     s2_fcode <= fg_vq;
     s2_bcode <= bg_vq;
     s2_fx    <= s1_fx;
@@ -498,36 +437,27 @@ always @(posedge clk) if (ce_pix) begin
     bg_ga <= {bg_vq, s1_row};
 end
 
-
-// gfx ROM planes: shared blocks rom1 / rom2 (bg low / high plane), rom3 / rom4 (fg)
 assign rom1_a = bg_ga;  assign bglo_q = rom1_d;
 assign rom2_a = bg_ga;  assign bghi_q = rom2_d;
 assign rom3_a = fg_ga;  assign fglo_q = rom3_d;
 assign rom4_a = fg_ga;  assign fghi_q = rom4_d;
 
-// S2: gfx bytes -> pixel; plane 0 (MSB) = second half of the ROM, pixel x = bit x
 wire [2:0] s2_fxb = s2_fx;
 wire [1:0] fpix = {fghi_q[s2_fxb], fglo_q[s2_fxb]};
 wire [1:0] bpix = {bghi_q[s2_bx],  bglo_q[s2_bx]};
-wire       use_fg = fpix != 2'd0;    // fg pen 0 transparent
-// pen = colour * 4 + pixel, colour = code[7:5] | fg << 3 | bank << 4; PROM address = bitswap of the pen:
-// Phoenix bitswap<7>(6,5,1,0,4,3,2), Pleiads bitswap<8>(7,6,5,1,0,4,3,2) = {bank, fg, pixel, code[7:5]}
+wire       use_fg = fpix != 2'd0;
 always @(posedge clk) if (ce_pix)
     prom_a <= use_fg ? {pal_bank, 1'b1, fpix, s2_fcode[7:5]} : {pal_bank, 1'b0, bpix, s2_bcode[7:5]};
 
-
-// colour PROMs: shared blocks rom5 (low) / rom6 (high)
 assign rom5_a = prom_a;  assign prl_q = rom5_d;
 assign rom6_a = prom_a;  assign prh_q = rom6_d;
 
-// S3: PROM nibbles -> 2-bit levels -> RGB (tools/palette_lut.py)
 wire [3:0] p0 = opt[0] ? prh_q[7:4] : prl_q[3:0];
 wire [3:0] p1 = prh_q[3:0];
-wire [5:0] lv = {p1[0], p0[0], p1[2], p0[2], p1[1], p0[1]};   // {R, G, B}
+wire [5:0] lv = {p1[0], p0[0], p1[2], p0[2], p1[1], p0[1]};
 reg [23:0] rgb, rgb_s;
 always @(*) begin
     case (lv)
-        // generated by tools/palette_lut.py (Phoenix / Pleiads network)
         6'b000000: rgb = 24'h000000;
         6'b000001: rgb = 24'h000000;
         6'b000010: rgb = 24'h070691;
@@ -595,7 +525,6 @@ always @(*) begin
         default: rgb = 24'h000000;
     endcase
     case (lv)
-        // generated by tools/palette_lut.py (Survival network)
         6'b000000: rgb_s = 24'h000000;
         6'b000001: rgb_s = 24'h000000;
         6'b000010: rgb_s = 24'h070485;
@@ -666,8 +595,6 @@ end
 
 always @(posedge clk) if (ce_pix) {video_r, video_g, video_b} <= v_surv ? rgb_s : rgb;
 
-// ---------------------------------------------------------------- blanking / sync, delayed to the pixel pipeline
-// counters -> S0 address -> S1 code -> S2 PROM address -> S3 RGB: the RGB for a raster position is out 4 ce later
 localparam DLY = 4;
 reg [DLY-1:0] hbl_d = '0, vbl_d = '0, hs_d = '0, vs_d = '0;
 always @(posedge clk) if (ce_pix) begin
@@ -681,16 +608,11 @@ assign video_vblank = vbl_d[DLY-1];
 assign video_hs     = hs_d[DLY-1];
 assign video_vs     = vs_d[DLY-1];
 
-// ---------------------------------------------------------------- sound
-// Effects 1 / 2 and the noise: discrete engine program (MRA index 5). Sources: 0 = control A, 1 = control B.
 wire signed [15:0] ds_out;
 assign dsnd_0_i.src = {40'd0, 7'd0, z80pa85_0_o.sod, snd_b, snd_a};
-                                                    // 8085 SOD (set by the SIM instruction) is src bit 16; used by Pleiads
 assign ds_out = dsnd_0_o.out;
 
 wire signed [15:0] mm_out;
-// Phoenix: MM6221AA tune select = 6800 bits 7-6. Pleiads (cfg_b): TMS3615 stand-in for the undumped Epson 7910,
-// note = 6800 bits 3-0, octave = bits 7-6 (3 plays as 2), only when the latch value changes
 assign tms36xx_0_i.cfg_b        = v_pleiads;
 assign tms36xx_0_i.tune_we      = wr_stb & cs_sndb & !v_pleiads;
 assign tms36xx_0_i.tune         = cpu_do[7:6];
@@ -701,19 +623,14 @@ assign tms36xx_0_i.enable_we    = 1'b0;
 assign tms36xx_0_i.voice_enable = 6'd0;
 assign mm_out = tms36xx_0_o.audio;
 
-// AY (Survival): each channel 0 .. 1.0 = jt49 0 .. 255 -> x 64 (32768 x 0.5 / 255); DC blocked (~5 Hz)
 reg  signed [26:0] ay_dc = 27'sd0;
 wire signed [11:0] ay_x  = $signed({2'b00, ay_snd}) - $signed(ay_dc[26:15]);
 always @(posedge clk) if (reset) ay_dc <= 27'sd0; else if (div == 4'd15) ay_dc <= ay_dc + 27'(ay_x);
 wire signed [16:0] ay_out = 17'(ay_x) <<< 6;
 
-// Phoenix: discrete 0.6 + custom noise 0.4 (both inside the engine program) + MM6221AA 0.5.
-// Pleiads: the engine = the board's effects mixer (tools/dsnd_pleiads.py) + the 7910 stand-in at ~its R84 leg level.
-// Survival: the AY.
 wire signed [16:0] mix = v_surv ? ay_out : 17'(ds_out) + (v_pleiads ? 17'(mm_out >>> 2) : 17'(mm_out >>> 1));
 assign audio = (mix > 17'sd32767) ? 16'sh7FFF : (mix < -17'sd32768) ? 16'sh8000 : mix[15:0];
 
-// ---------------------------------------------------------------- hiscore (final pass)
 assign hs_data_out = 8'h00;
 
 endmodule
